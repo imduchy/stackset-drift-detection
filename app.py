@@ -1,28 +1,25 @@
 #!/usr/bin/env python3
 import os
 
-import aws_cdk as cdk
+from aws_cdk import App, Environment
 
-from stackset_drift_detection.stackset_drift_detection_stack import StacksetDriftDetectionStack
+from lib.stack import StacksetDriftDetectionStack, StacksetDriftDetectionStackProps
 
+app = App()
 
-app = cdk.App()
-StacksetDriftDetectionStack(app, "StacksetDriftDetectionStack",
-    # If you don't specify 'env', this stack will be environment-agnostic.
-    # Account/Region-dependent features and context lookups will not work,
-    # but a single synthesized template can be deployed anywhere.
-
-    # Uncomment the next line to specialize this stack for the AWS Account
-    # and Region that are implied by the current CLI configuration.
-
-    #env=cdk.Environment(account=os.getenv('CDK_DEFAULT_ACCOUNT'), region=os.getenv('CDK_DEFAULT_REGION')),
-
-    # Uncomment the next line if you know exactly what Account and Region you
-    # want to deploy the stack to. */
-
-    #env=cdk.Environment(account='123456789012', region='us-east-1'),
-
-    # For more information, see https://docs.aws.amazon.com/cdk/latest/guide/environments.html
-    )
+_ = StacksetDriftDetectionStack(
+    app,
+    "StacksetDriftDetectionStack",
+    env=Environment(
+        account=os.environ["CDK_DEFAULT_ACCOUNT"],
+        region=os.environ["CDK_DEFAULT_REGION"],
+    ),
+    props=StacksetDriftDetectionStackProps(
+        stackset_names=["MyStackSetName"],  # Provide a list of StackSet names to monitor
+        schedule_expression="cron(0 5 ? * 2 *)",
+        notification_email_endpoints=[""],  # Provide a list of email addresses
+        notification_https_endpoints=[""],  # Provide a list of HTTPS endpoints
+    ),
+)
 
 app.synth()

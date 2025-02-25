@@ -1,58 +1,43 @@
+# Automated CloudFormation StackSet drift detection
 
-# Welcome to your CDK Python project!
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-This is a blank project for CDK development with Python.
 
-The `cdk.json` file tells the CDK Toolkit how to execute your app.
+Provides a CDK example for automated CloudFormation StackSet drift detection. This event-driven solution allows teams to proactively identify configuration drift across AWS accounts and receive alerts when a StackSet instance(s) drifted from the desired state.
 
-This project is set up like a standard Python project.  The initialization
-process also creates a virtualenv within this project, stored under the `.venv`
-directory.  To create the virtualenv it assumes that there is a `python3`
-(or `python` for Windows) executable in your path with access to the `venv`
-package. If for any reason the automatic creation of the virtualenv fails,
-you can create the virtualenv manually.
+## Getting started
 
-To manually create a virtualenv on MacOS and Linux:
+Bellow is an example for how to use the `StacksetDriftDetectionStackProps` stack.
 
-```
-$ python3 -m venv .venv
-```
+```python
+app = aws_cdk.App()
 
-After the init process completes and the virtualenv is created, you can use the following
-step to activate your virtualenv.
-
-```
-$ source .venv/bin/activate
-```
-
-If you are a Windows platform, you would activate the virtualenv like this:
-
-```
-% .venv\Scripts\activate.bat
+StacksetDriftDetectionStack(
+    app,
+    "StacksetDriftDetectionStack",
+    env=Environment(
+        account=os.environ["CDK_DEFAULT_ACCOUNT"],
+        region=os.environ["CDK_DEFAULT_REGION"],
+    ),
+    props=StacksetDriftDetectionStackProps(
+        stackset_names=["ExampleStackSetName"],
+        schedule_expression="cron(0 5 ? * 2 *)",
+        notification_email_endpoints=["security@examplecorp.com"],
+        notification_https_endpoints=["security.webhook.examplecorp.com"],
+    ),
+)
 ```
 
-Once the virtualenv is activated, you can install the required dependencies.
+## How it works
 
-```
-$ pip install -r requirements.txt
-```
+![Diagram](docs/stackset-drift-detection.drawio.png)
 
-At this point you can now synthesize the CloudFormation template for this code.
+1. EventBridge schedule triggers CloudFormation StackSet drift detection based on the provided schedule expression. EventBridge Schedulers support `cron` and `rate` expressions.
 
-```
-$ cdk synth
-```
+2. CloudFormation publishes "StackSet Operation Status Change" events to the default EventBridge bus.
 
-To add additional dependencies, for example other CDK libraries, just add
-them to your `setup.py` file and rerun the `pip install -r requirements.txt`
-command.
+3. A custom EventBridge rule captures the relevant event and forwards it to the Lambda function.
 
-## Useful commands
+4. The Lambda function fetches the StackSet operation details from CloudFormation and evaluates the its status.
 
- * `cdk ls`          list all stacks in the app
- * `cdk synth`       emits the synthesized CloudFormation template
- * `cdk deploy`      deploy this stack to your default AWS account/region
- * `cdk diff`        compare deployed stack with current state
- * `cdk docs`        open CDK documentation
-
-Enjoy!
+5. If the StackSet operation discovered a DRIFT in one or more of StackSet instances, it will send an alert through the SNS topic.

@@ -7,7 +7,7 @@ Provides a CDK example for automated CloudFormation StackSet drift detection. Th
 
 ## Getting started
 
-Bellow is an example for how to use the `StacksetDriftDetectionStackProps` stack.
+Bellow is an example for how to use the `StacksetDriftDetectionStack` stack.
 
 ```python
 app = aws_cdk.App()

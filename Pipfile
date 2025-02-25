@@ -10,6 +10,9 @@ constructs = "<11.0.0,>=10.0.0"
 [dev-packages]
 aws-lambda-powertools = "*"
 boto3 = "*"
+black = "*"
+pylint = "*"
+isort = "*"
 
 [requires]
 python_version = "3.12"

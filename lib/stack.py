@@ -9,7 +9,8 @@ import aws_cdk.aws_lambda_destinations as destinations
 import aws_cdk.aws_logs as logs
 import aws_cdk.aws_scheduler as scheduler
 import aws_cdk.aws_sns as sns
-import aws_cdk.aws_sns_subscriptions as sns_subs
+import aws_cdk.aws_sns_subscriptions as subscriptions
+import aws_cdk.aws_sqs as sqs
 from aws_cdk import Duration, RemovalPolicy, Stack
 from constructs import Construct
 
@@ -63,7 +64,7 @@ class StacksetDriftDetectionStack(Stack):
 
         for email in self._props.notification_email_endpoints:
             topic.add_subscription(
-                sns_subs.EmailSubscription(
+                subscriptions.EmailSubscription(
                     email_address=email,
                     json=True,
                 )
@@ -71,7 +72,7 @@ class StacksetDriftDetectionStack(Stack):
 
         for endpoint in self._props.notification_https_endpoints:
             topic.add_subscription(
-                sns_subs.UrlSubscription(
+                subscriptions.UrlSubscription(
                     url=endpoint,
                     protocol=sns.SubscriptionProtocol.HTTPS,
                 )
@@ -80,6 +81,12 @@ class StacksetDriftDetectionStack(Stack):
         return topic
 
     def _create_schedulers(self):
+        dead_letter_queue = sqs.Queue(
+            self,
+            "SchedulerCommonDLQ",
+            enforce_ssl=True,
+        )
+
         role = iam.Role(
             self,
             "SchedulerRole",
@@ -91,7 +98,12 @@ class StacksetDriftDetectionStack(Stack):
                             effect=iam.Effect.ALLOW,
                             actions=["cloudformation:DetectStackSetDrift"],
                             resources=["*"],
-                        )
+                        ),
+                        iam.PolicyStatement(
+                            effect=iam.Effect.ALLOW,
+                            actions=["sqs:SendMessage"],
+                            resources=[dead_letter_queue.queue_arn],
+                        ),
                     ]
                 )
             },
@@ -122,6 +134,9 @@ class StacksetDriftDetectionStack(Stack):
                         }
                     ),
                     role_arn=role.role_arn,
+                    dead_letter_config=scheduler.CfnSchedule.DeadLetterConfigProperty(
+                        arn=dead_letter_queue.queue_arn
+                    ),
                 ),
                 schedule_expression=self._props.schedule_expression,
                 flexible_time_window=scheduler.CfnSchedule.FlexibleTimeWindowProperty(mode="OFF"),

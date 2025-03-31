@@ -38,18 +38,22 @@ def lambda_handler(event, _):
     logger.info("Details fetched.", extra={"response": describe_operation_response})
 
     operation_details = describe_operation_response["StackSetOperation"]
-    status = operation_details["Status"]
+    operation_status = operation_details["Status"]
+    stackset_drift_detection_details = operation_details["StackSetDriftDetectionDetails"]
+    stackset_drift_status = stackset_drift_detection_details.get("DriftStatus")
+    stackset_drift_detection_status = stackset_drift_detection_details.get("DriftDetectionStatus")
 
-    if status in ["FAILED", "STOPPED"]:
-        status_reason = operation_details["StatusReason"]
-        failed_count = operation_details["StatusDetails"]["FailedStackInstancesCount"]
+    if operation_status in ["FAILED", "STOPPED"]:
+        operation_status_details = operation_details.get("StatusDetails", {})
 
         logger.error(
             "The operation didn't complete successfully!",
             extra={
-                "status": status,
-                "status_reason": status_reason,
-                "failed_stack_instances": failed_count,
+                "operation_status": operation_status,
+                "operation_status_reason": operation_details.get("StatusReason"),
+                "drift_status": stackset_drift_status,
+                "drift_detection_status": stackset_drift_detection_status,
+                "failed_stack_instances": operation_status_details.get("FailedStackInstancesCount"),
             },
         )
 
@@ -60,17 +64,14 @@ def lambda_handler(event, _):
 
         return
 
-    drift_detection_details = operation_details["StackSetDriftDetectionDetails"]
-    drift_status = drift_detection_details["DriftStatus"]
-
-    if drift_status != "IN_SYNC":
-        total_count = drift_detection_details["TotalStackInstancesCount"]
-        drifted_count = drift_detection_details["DriftedStackInstancesCount"]
+    if stackset_drift_status != "IN_SYNC":
+        total_count = stackset_drift_detection_details.get("TotalStackInstancesCount")
+        drifted_count = stackset_drift_detection_details.get("DriftedStackInstancesCount")
 
         logger.error(
             "Stackset drift status is not in sync!",
             extra={
-                "status": drift_status,
+                "status": stackset_drift_status,
                 "total_stack_instances": total_count,
                 "drifted_stack_instances": drifted_count,
             },

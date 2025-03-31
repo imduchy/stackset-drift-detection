@@ -213,7 +213,7 @@ class StacksetDriftDetectionStack(Stack):
                 source=["aws.cloudformation"],
                 detail={
                     "action": ["DETECT_DRIFT"],
-                    "stack-set-arn": [{"wildcard": arn for arn in stackset_arns}],
+                    "stack-set-arn": [{"wildcard": arn} for arn in stackset_arns],
                     "status-details": {"status": ["SUCCEEDED", "FAILED", "STOPPED"]},
                 },
             ),
